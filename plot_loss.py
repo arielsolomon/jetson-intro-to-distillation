@@ -3,11 +3,12 @@ import os
 import glob
 import pandas as pd
 import re
-
+from PIL import Image
 
 root = '/Data/federated_learning/kd_jetson_clip_ex/data/experiments/'
 exp_list = os.listdir(root)
 dest = '/Data/federated_learning/kd_jetson_clip_ex/data/exp_loss_acc_images/'
+loaded_images = []
 def extract_values(log):
     match = re.search(r'TRAIN LOSS ([\d\.e-]+) \| TEST ACC ([\d\.]+) \|', log)
     if match:
@@ -29,13 +30,13 @@ def read_and_extract_values(file_path):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
 
     # Plot Train Loss on the first subplot (ax1)
-    ax1.plot(df['Epochs'], df['Train Loss'], label='Train Loss')
+    ax1.plot(df['Epochs'], df['Train Loss'], label='Train Loss',color='green', marker="o")
     ax1.set_title(title+' Train Loss')
     ax1.set_xlabel('Epochs')
     ax1.set_ylabel('Loss')
 
     # Plot Test Accuracy on the second subplot (ax2)
-    ax2.plot(df['Epochs'], df['Test Accuracy'], label='Test Accuracy', color='orange')
+    ax2.plot(df['Epochs'], df['Test Accuracy'], label='Test Accuracy', color='orange', marker="o")
     ax2.set_title(title+' Test Accuracy')
     ax2.set_xlabel('Epochs')
     ax2.set_ylabel('Accuracy (%)')
@@ -47,8 +48,33 @@ def read_and_extract_values(file_path):
     destination_path = dest+'/'+title+'.png'
     plt.savefig(destination_path)
 
+def create_single_image(image_paths,images):
+    for path in glob.glob(os.path.join(image_paths, '*.png')):
+        img = Image.open(path)
+        images.append(img)
+
+    # Get the dimensions of the images
+    width, height = images[0].size
+
+    # Create a new image with a size large enough for a 2x3 grid
+    result_width = 3 * width
+    result_height = 2 * height
+    result_image = Image.new('RGB', (result_width, result_height))
+
+    # Paste each image into the result image
+    for i in range(6):
+        row = i // 3
+        col = i % 3
+        result_image.paste(images[i], (col * width, row * height))
+
+    # Save the result image
+    result_image.save(dest+'composed.jpg')
+
+
 
 for exp in exp_list:
     exp_path = root+exp+'/'
     log = exp_path+'log.txt'
     read_and_extract_values(log)
+create_single_image(dest, loaded_images)
+
